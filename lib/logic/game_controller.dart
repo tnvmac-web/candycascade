@@ -283,6 +283,10 @@ class GameController extends StateNotifier<GameState?> {
 
     // Free switch booster: swap anything, no match needed.
     if (s.booster == BoosterMode.freeSwitch) {
+      // Disarm first. _consumeBooster only decrements the saved count, so the
+      // booster mode has to be cleared here or it would stay armed and every
+      // later swap in the level would also be free.
+      state = s.copyWith(booster: BoosterMode.none);
       engine.rawSwap(r1, c1, r2, c2);
       _consumeBooster(BoosterMode.freeSwitch);
       _hapticLight();
@@ -774,6 +778,33 @@ class GameController extends StateNotifier<GameState?> {
   void _hapticLight() => AudioService.instance.hapticLight();
   void _hapticMedium() => AudioService.instance.hapticMedium();
   void _hapticHeavy() => AudioService.instance.hapticHeavy();
+
+  // ---------------------------------------------------------------------------
+  // Test seams
+  //
+  // Small read only accessors so tests can drive the controller without
+  // reaching into its private engine. They are cheap and have no side effects.
+  // ---------------------------------------------------------------------------
+
+  /// The engine's hint, as two cell indices, or null when the board is dead.
+  List<int>? debugHint() => _engine?.findHint();
+
+  int debugRow(int index) => _engine?.rowOf(index) ?? 0;
+
+  int debugCol(int index) => _engine?.colOf(index) ?? 0;
+
+  /// Whether a swap between two cells would form a match, without applying it.
+  bool debugSwapIsValid(int r1, int c1, int r2, int c2) {
+    final MatchEngine? engine = _engine;
+    if (engine == null) return false;
+    if (!engine.areAdjacent(r1, c1, r2, c2)) return false;
+    final SwapOutcome outcome = engine.applySwap(r1, c1, r2, c2);
+    if (outcome.valid) {
+      // Undo, so the probe leaves the board untouched.
+      engine.rawSwap(r1, c1, r2, c2);
+    }
+    return outcome.valid;
+  }
 
   void _stopTimers() {
     _hintTimer?.cancel();

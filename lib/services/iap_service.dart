@@ -97,7 +97,15 @@ class IapService {
   IapService(this._persistence);
 
   final PersistenceService _persistence;
-  final InAppPurchase _iap = InAppPurchase.instance;
+
+  /// Resolved lazily. `InAppPurchase.instance` immediately opens a platform
+  /// channel to Play Billing or StoreKit, which throws on any platform without
+  /// it (a headless test, a desktop build). Touching it only when the store is
+  /// actually used keeps constructing this service side effect free.
+  InAppPurchase? _iapInstance;
+
+  InAppPurchase get _iap => _iapInstance ??= InAppPurchase.instance;
+
   final StreamController<PurchaseEvent> _events =
       StreamController<PurchaseEvent>.broadcast();
 

@@ -48,9 +48,18 @@ class AudioService {
 
   static final AudioService instance = AudioService._();
 
-  final AudioPlayer _sfxPlayer = AudioPlayer(playerId: 'cc_sfx_a');
-  final AudioPlayer _sfxPlayerB = AudioPlayer(playerId: 'cc_sfx_b');
-  final AudioPlayer _musicPlayer = AudioPlayer(playerId: 'cc_music');
+  // Players are created on first use. Constructing an AudioPlayer immediately
+  // opens the audioplayers platform channel, which throws on a platform without
+  // the plugin (a headless test, desktop). Lazy creation keeps `instance` cheap
+  // and makes the whole service usable in tests.
+  AudioPlayer? _sfxA;
+  AudioPlayer? _sfxB;
+  AudioPlayer? _music;
+
+  AudioPlayer get _sfxPlayer => _sfxA ??= AudioPlayer(playerId: 'cc_sfx_a');
+  AudioPlayer get _sfxPlayerB => _sfxB ??= AudioPlayer(playerId: 'cc_sfx_b');
+  AudioPlayer get _musicPlayer => _music ??= AudioPlayer(playerId: 'cc_music');
+
   final Random _rng = Random();
 
   bool _soundOn = true;
@@ -162,40 +171,54 @@ class AudioService {
 
   // ---------------------------------------------------------------------------
   // Haptics
+  //
+  // Every call is wrapped: HapticFeedback goes through a platform channel, which
+  // is absent in a headless unit test and can also be missing on some custom
+  // ROMs. A failed buzz must never break the game logic that triggered it.
   // ---------------------------------------------------------------------------
 
   Future<void> hapticLight() async {
     if (!_hapticsOn) return;
-    await HapticFeedback.lightImpact();
+    try {
+      await HapticFeedback.lightImpact();
+    } catch (_) {}
   }
 
   Future<void> hapticMedium() async {
     if (!_hapticsOn) return;
-    await HapticFeedback.mediumImpact();
+    try {
+      await HapticFeedback.mediumImpact();
+    } catch (_) {}
   }
 
   Future<void> hapticHeavy() async {
     if (!_hapticsOn) return;
-    await HapticFeedback.heavyImpact();
+    try {
+      await HapticFeedback.heavyImpact();
+    } catch (_) {}
   }
 
   Future<void> hapticSelection() async {
     if (!_hapticsOn) return;
-    await HapticFeedback.selectionClick();
+    try {
+      await HapticFeedback.selectionClick();
+    } catch (_) {}
   }
 
   /// A short buzz pattern used on a big combo.
   Future<void> hapticCombo(int strength) async {
     if (!_hapticsOn) return;
-    if (strength <= 0) {
-      await HapticFeedback.selectionClick();
-    } else if (strength == 1) {
-      await HapticFeedback.lightImpact();
-    } else if (strength == 2) {
-      await HapticFeedback.mediumImpact();
-    } else {
-      await HapticFeedback.heavyImpact();
-    }
+    try {
+      if (strength <= 0) {
+        await HapticFeedback.selectionClick();
+      } else if (strength == 1) {
+        await HapticFeedback.lightImpact();
+      } else if (strength == 2) {
+        await HapticFeedback.mediumImpact();
+      } else {
+        await HapticFeedback.heavyImpact();
+      }
+    } catch (_) {}
   }
 
   /// Random short "yum" for a cascade, so repeats do not sound mechanical.
@@ -203,8 +226,8 @@ class AudioService {
       ComboVoice.lines[_rng.nextInt(ComboVoice.lines.length)];
 
   void dispose() {
-    _sfxPlayer.dispose();
-    _sfxPlayerB.dispose();
-    _musicPlayer.dispose();
+    _sfxA?.dispose();
+    _sfxB?.dispose();
+    _music?.dispose();
   }
 }
