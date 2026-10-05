@@ -48,6 +48,12 @@ class _LevelMapScreenState extends ConsumerState<LevelMapScreen> {
   Widget build(BuildContext context) {
     final PlayerProgress progress = ref.watch(playerProgressProvider);
     final PersistenceService persistence = ref.watch(persistenceProvider);
+    // progressRevisionProvider is an int, so watching it guarantees a rebuild
+    // whenever a level result is recorded. playerProgressProvider returns the
+    // same mutable PlayerProgress instance every time, and Riverpod compares by
+    // identity, so on its own it would never trigger a repaint and the stars
+    // earned in a level would not appear until the app was restarted.
+    ref.watch(progressRevisionProvider);
     final int highest = progress.highestLevelUnlocked;
     // Show a few levels past the frontier so the map feels endless.
     final int visible = math.max(20, highest + 6);
