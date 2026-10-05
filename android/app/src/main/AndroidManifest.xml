@@ -1,0 +1,97 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Networking: the ads SDK and Play Billing both need it. The game itself
+         plays fully offline. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Play Billing. Required for every in app purchase. -->
+    <uses-permission android:name="com.android.vending.BILLING" />
+
+    <!-- Ads SDK on Android 13+ needs the advertising id for non personalised
+         and frequency capped ads. In child directed mode the SDK still works
+         without it. -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+
+    <!-- Vibration for the haptics. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Android 13+ notification permission, used by the ads SDK's foreground
+         helper on some devices. Harmless if unused. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:label="Candy Cascade"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:enableOnBackInvokedCallback="true"
+        android:hardwareAccelerated="true">
+
+        <!-- AdMob application id. This is Google's published TEST id and is
+             safe to ship. Replace it with your own before release, and mirror
+             the change in android/app/src/main/res/values/strings.xml. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713" />
+
+        <!-- Ads are initialised in Dart, not by the SDK's auto initialiser,
+             so the consent flow can run first. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.flag.OPTIMIZE_INITIALIZATION"
+            android:value="false" />
+        <meta-data
+            android:name="com.google.android.gms.ads.flag.OPTIMIZE_AD_LOADING"
+            android:value="false" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+
+            <!-- Android 12+ splash screen. The Flutter engine draws the first
+                 frame once the app is ready; this theme shows the branded
+                 splash in the meantime. -->
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <meta-data
+                android:name="io.flutter.embedding.android.SplashScreenDrawable"
+                android:resource="@drawable/launch_background" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Do not auto initialise the Mobile Ads SDK from the manifest: Dart
+             does it after the UMP consent form has been resolved. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.DELAY_APP_MEASUREMENT_INIT"
+            android:value="true" />
+
+        <!-- Flutter's own embedding version metadata. -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+
+    <!-- Required on Android 11+ so the app can see the Play Store and the
+         browser for privacy policy links. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+</manifest>

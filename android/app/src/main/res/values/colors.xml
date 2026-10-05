@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches GameColors.bgBottom in lib/views/game_board_screen.dart, so the
+         splash and the first Flutter frame are the same colour. -->
+    <color name="splash_background">#1B0B33</color>
+</resources>

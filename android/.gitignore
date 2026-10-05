@@ -1,0 +1,16 @@
+gradle-wrapper.jar
+/.gradle
+/captures/
+/local.properties
+GeneratedPluginRegistrant.java
+.cxx/
+
+# NOTE: gradlew, gradlew.bat and gradle/wrapper/gradle-wrapper.jar are
+# deliberately NOT ignored. The CI build runs the wrapper directly, so those
+# files have to be in the repository.
+
+# Remember to never publicly share your keystore.
+# See https://flutter.dev/to/reference-keystore
+key.properties
+**/*.keystore
+**/*.jks

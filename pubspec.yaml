@@ -1,0 +1,50 @@
+name: candy_cascade
+description: "Candy Cascade - a feature rich match-3 casual puzzle game built with Flutter."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+  flutter: '>=3.19.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.5.1
+
+  # Audio + haptics
+  audioplayers: ^6.1.0
+
+  # Monetisation
+  in_app_purchase: ^3.2.0
+  google_mobile_ads: ^5.2.0
+
+  # Persistence
+  shared_preferences: ^2.3.2
+
+  # UI helpers
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/audio/
+    - assets/images/
+
+  # The game ships no font binaries; it relies on the platform default.
+  # If you want a chunky candy font, drop the .ttf into assets/fonts and
+  # uncomment the block below.
+  #
+  # fonts:
+  #   - family: CandyFont
+  #     fonts:
+  #       - asset: assets/fonts/CandyFont-Regular.ttf

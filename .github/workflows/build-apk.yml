@@ -1,0 +1,197 @@
+name: Build Candy Cascade APK
+
+# Builds the Flutter game into installable Android artifacts.
+#
+# The Android SDK is provisioned by Google's `android` CLI rather than a
+# pre-baked runner image, so the job declares exactly which platform and build
+# tools it needs.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'release'
+        type: choice
+        options: [debug, release]
+
+permissions:
+  contents: write
+
+env:
+  # Pinned to the version this project was developed and tested against.
+  FLUTTER_VERSION: '3.47.6'
+  FLUTTER_CHANNEL: stable
+  JAVA_VERSION: '17'
+  # Must match compileSdk / targetSdk in android/app/build.gradle.kts.
+  ANDROID_PLATFORM: 'android-36'
+  ANDROID_BUILD_TOOLS: '36.0.0'
+  ANDROID_HOME: ${{ github.workspace }}/android-sdk
+
+jobs:
+  # Fast feedback. The Dart side needs no Android toolchain at all, so this job
+  # fails in about a minute rather than after a full SDK download.
+  analyze-and-test:
+    name: Analyze and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run tests
+        run: flutter test --coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/lcov.info
+          if-no-files-found: ignore
+
+  build-apk:
+    name: Build APK
+    needs: analyze-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      # Google's supported way to get an Android SDK onto a clean machine.
+      - name: Install Android CLI
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://dl.google.com/android/cli/latest/linux_x86_64/install.sh" -o /tmp/android-cli.sh
+          bash /tmp/android-cli.sh
+          # The installer puts the binary under $HOME/.android/bin and edits the
+          # shell profile. Export it for the rest of this job.
+          echo "$HOME/.android/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.android/bin:$PATH"
+          android --version
+
+      - name: Provision the Android SDK
+        run: |
+          set -euo pipefail
+          mkdir -p "$ANDROID_HOME"
+          android --sdk "$ANDROID_HOME" sdk install \
+            "platforms/${ANDROID_PLATFORM}" \
+            "build-tools/${ANDROID_BUILD_TOOLS}" \
+            "platform-tools"
+          android --sdk "$ANDROID_HOME" info
+
+      - name: Accept Android licences
+        run: |
+          set -euo pipefail
+          # The CLI writes licences as it installs; this covers anything it
+          # skipped, which is what the Gradle build checks for.
+          mkdir -p "$ANDROID_HOME/licenses"
+          for f in android-sdk-license android-sdk-preview-license android-googletv-license \
+                   google-gdk-license intel-android-extra-license mips-android-sysimage-license; do
+            printf '\n24333f8a63b6825ea9c5514f83c2829b004d1fee\n8933bad161af4178b1185d1a37fbf41ea5269c55\n' > "$ANDROID_HOME/licenses/$f"
+          done
+          if [ -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+          fi
+
+      - name: Point the build at the SDK
+        run: |
+          set -euo pipefail
+          # local.properties is generated, never committed. Flutter and Gradle
+          # both read it to locate the two SDKs.
+          cat > android/local.properties <<EOF
+          sdk.dir=$ANDROID_HOME
+          flutter.sdk=$FLUTTER_ROOT
+          EOF
+          cat android/local.properties
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build debug APK
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'debug'
+        run: flutter build apk --debug
+
+      - name: Build release APK
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.build_type != 'debug'
+        run: flutter build apk --release --split-per-abi
+
+      - name: Build release App Bundle
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.build_type != 'debug'
+        run: flutter build appbundle --release
+
+      - name: Upload debug APK
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'debug'
+        uses: actions/upload-artifact@v4
+        with:
+          name: candy-cascade-debug-apk
+          path: build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
+
+      - name: Upload release APKs
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.build_type != 'debug'
+        uses: actions/upload-artifact@v4
+        with:
+          name: candy-cascade-release-apks
+          path: build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
+
+      - name: Upload release App Bundle
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.build_type != 'debug'
+        uses: actions/upload-artifact@v4
+        with:
+          name: candy-cascade-release-aab
+          path: build/app/outputs/bundle/release/*.aab
+          if-no-files-found: error
+
+      - name: Attach artifacts to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/app/outputs/flutter-apk/*.apk
+            build/app/outputs/bundle/release/*.aab
+          generate_release_notes: true
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

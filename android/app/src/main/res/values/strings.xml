@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Display name shown under the launcher icon. -->
+    <string name="app_name">Candy Cascade</string>
+
+    <!-- AdMob application id.
+         The value here MUST match the meta-data in AndroidManifest.xml.
+         Replace both with your own id before you publish. -->
+    <string name="admob_app_id" translatable="false">ca-app-pub-3940256099942544~3347511713</string>
+
+    <!-- Default channel used by the Flutter engine for plugin messages. -->
+    <string name="default_notification_channel_id" translatable="false">candy_cascade_default</string>
+</resources>
