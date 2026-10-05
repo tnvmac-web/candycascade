@@ -123,8 +123,17 @@ jobs:
             "platforms/${ANDROID_PLATFORM}" \
             "build-tools/${ANDROID_BUILD_TOOLS}" \
             "platform-tools" \
+            "cmdline-tools/16.0" \
             "ndk/${ANDROID_NDK}"
           android --sdk "$ANDROID_HOME" info
+          # Flutter's AAB debug-symbol check looks for cmdline-tools/latest
+          # first and then scans versioned folders, so link latest for speed
+          # and certainty.
+          if [ -d "$ANDROID_HOME/cmdline-tools/16.0" ] && [ ! -e "$ANDROID_HOME/cmdline-tools/latest" ]; then
+            ln -s "$ANDROID_HOME/cmdline-tools/16.0" "$ANDROID_HOME/cmdline-tools/latest"
+          fi
+          ls "$ANDROID_HOME/cmdline-tools"
+          ls "$ANDROID_HOME/cmdline-tools/latest/bin" | head
 
       - name: Accept Android licences
         run: |
