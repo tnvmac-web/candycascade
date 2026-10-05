@@ -195,6 +195,59 @@ and the Families policy expect.
 
 ---
 
+## Continuous integration
+
+`.github/workflows/build-apk.yml` runs on every push to `main`, on pull
+requests, and on demand from the Actions tab.
+
+Two jobs, in order:
+
+1. **Analyze and test.** Formats, analyzes and runs the test suite. It needs no
+   Android toolchain, so a broken commit fails in about a minute instead of
+   after a five minute SDK download.
+2. **Build APK.** Provisions the Android SDK with Google's `android` CLI,
+   then builds the release APK split per ABI and the release App Bundle.
+
+The SDK is installed by the CLI rather than relying on a pre-baked runner
+image, so the workflow states exactly what it needs:
+
+| Component | Version | Why |
+|---|---|---|
+| Flutter | 3.47.6 | pinned to the version this project was built against |
+| Java | 17 | the toolchain Gradle and AGP both expect |
+| Platform | android-36 | matches `compileSdk` |
+| Build tools | 36.0.0 | matches the platform |
+| cmdline-tools | 16.0 | Flutter needs `apkanalyzer` from here to verify the AAB symbol strip |
+| NDK | 28.2.13676358 | required to strip native debug symbols when bundling the AAB |
+
+### What it produces
+
+Every run uploads three artifacts, downloadable from the run page:
+
+* `candy-cascade-release-apks` — the per ABI APKs, about 30 MB total.
+* `candy-cascade-release-aab` — the App Bundle for the Play Store, about 51 MB.
+* `coverage` — the LCOV coverage report.
+
+Push a tag starting with `v` (for example `git tag v1.0.0 && git push --tags`)
+and the same artifacts are attached to a GitHub Release automatically.
+
+### Running a one-off debug build
+
+Actions tab, **Build Candy Cascade APK**, **Run workflow**, choose `debug`.
+
+### Two things to note
+
+The release artifacts are signed with the **debug key**, because
+`android/app/build.gradle.kts` points `release` at `signingConfigs.debug` so
+that `flutter build apk --release` works with no setup. Add a real
+`signingConfigs.release` block, fed from repository secrets, before you upload
+to Play.
+
+The build also needs `android/local.properties` to exist. The workflow
+generates it; locally, `flutter pub get` does.
+
+---
+
 ## Tests
 
 ```bash
@@ -208,9 +261,17 @@ hole barrier case, refill spawn offsets, frosting damage at one and two hit
 health, shuffle correctness, hint legality, jelly behaviour, the hammer, and
 score multipliers.
 
-The tests use a `blankEngine` helper that starts with every cell marked as a
+`test/game_flow_test.dart` covers the shipped level list (every hand crafted
+level is checked for reachable objectives, ascending star thresholds, frosting
+it actually has and jelly columns that exist), the JSON round trip, objective
+and star maths, a full cascade run to quiescence, sixty simulated turns with a
+hint-driven swap each time, and the offline life regeneration arithmetic.
+
+Both suites use a `blankEngine` helper that starts with every cell marked as a
 hole, so a test fills in exactly the candies it cares about and the expected
 match is never a guess.
+
+47 tests, all passing.
 
 ---
 
